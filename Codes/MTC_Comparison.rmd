@@ -1,0 +1,176 @@
+---
+title: "MTC_Comparison"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Comparing Bonferroni, Benjamini Hochberg FDR Correction & pFDR algos for MTC
+
+**1. NO correction**
+Original p values directly used for significance testing.
+
+**2. Bonferroni Correction**  
+The Bonferroni correction sets the significance cut-off at `α/n`.   
+
+**3. Benjamini-Hochberg FDR**  
+Proportion of false positives among all significant results. The FDR works by estimating some rejection region so that, on average, FDR < α.  
+
+
+### Comparing the three methods : 
+
+First let's make some data :
+
+```{r DataGeneration}
+set.seed(37)
+x <- c(rnorm(900), rnorm(100, mean = 3))
+p <- pnorm(x, lower.tail = F) # 
+
+```
+
+The first 900 entries are random numbers with a standard normal distribution. The last 100 are random numbers from a normal distribution with mean 3 and sd 1.  
+The second line of code is finding the p-values for a hypothesis test on each value of x.  
+**The hypothesis being tested is that the value of x is not different from 0**, given the entries are drawn from a standard normal distribution.  
+Alternate hypothesis being : the value is larger than 0
+
+Now, in this case, we know the truth:  
+**The first 900 observations should fail the significance test. (i.e fail to reject the null hypothesis) **: they are, in fact, drawn from a standard normal distribution and any difference between the observed value and 0 is just due to chance.  
+
+**The last 100 observations should reject the null hypothesis**: the difference between these values and 0 is not due to chance alone.  
+
+Let’s take a look at our p-values, adjust them in various ways, and see what sort of results
+we get :
+
+**1. No corrections**
+
+```{r No_MTC}
+
+test <- p > 0.05 
+
+print("Same ones")
+summary(test[1:900]) # Failed 
+
+# False positives
+FP_NoCorrection <- length(which(test[1:900] == "FALSE")) / length(test[1:900])
+
+```
+
+The type I error rate (false positives) is `r FP_NoCorrection`
+
+Now type 2 error rate will be
+
+```{r No_MTC1}
+
+print("Different ones")
+summary(test[901:1000]) # Significantly different
+
+# False negatives
+FN_NoCorrection <- length(which(test[901:1000] == "TRUE")) / length(test[901:1000])
+
+```
+
+Type II error for this is `r FN_NoCorrection `
+
+**2. Bonferroni correction**
+
+We have α = 0.05, and 1000 tests, so the Bonferroni correction will have us looking for p-values smaller than 0.05 / 1000 :  
+
+```{r BonferroniCorrection}
+
+Bonferroni_test <- p > (0.05 /1000)
+
+print("Same ones ones")
+summary(Bonferroni_test[1:900]) # Failed 
+
+# False positives
+FP_Bonferroni_Correction <- length(which(Bonferroni_test[1:900] == "FALSE")) / length(Bonferroni_test[1:900])
+
+```
+
+False positves : `r FP_Bonferroni_Correction `
+Eliminated FPs but wait look at the FNs.
+
+```{R BonferroniCorrection1}
+
+print("Different ones")
+summary(Bonferroni_test[901:1000]) # Significantly different
+
+# False negatives
+FN_Bonferroni_Correction <- length(which(Bonferroni_test[901:1000] == "TRUE")) / length(test[901:1000])
+
+```
+
+False negative rate has sky rocketed to `r FN_Bonferroni_Correction` percent. We've lost significant ones that much.
+
+**We’ve reduced our false positives at the expense of false negatives.**
+
+
+**3. FDR**
+
+For the FDR, we want to consider the ordered p-values. We’ll see if the 'i'th ordered p-value
+is larger than (i/1000)*d ( Here d = 0.05; Our FDR rate set)
+
+```{r FDR}
+
+    psort <- sort(p)
+    fdrtest <- NULL
+    pseudoFDR <- NULL
+    
+    for(i in 1:1000) {
+        fdrtest <- c(fdrtest, p[i] > match(p[i], psort) *(0.05/1000))
+        pseudoFDR <- c(pseudoFDR, p[i] > match(p[i], psort) / 1000)
+        
+    }
+# p[i] picks off entry from the vector p. match(p[i],psort) looks through the vector psort, finds the first value that’s exactly equal to p[1], and returns which entry of the vector it is.  
+
+# Looking at the Fps
+    summary(fdrtest[1:900])
+    summary(pseudoFDR[1:900])
+
+```
+
+Let's look at the error rates for this now. 
+
+```{r FDR1}
+
+
+FP_FDR_Correction <- length(which(fdrtest[1:900] == FALSE)) / length(fdrtest[1:900])
+FP_pseudoFDR <- length(which(pseudoFDR[1:900] == FALSE)) / length(which(pseudoFDR[1:900]))
+
+summary(fdrtest[901:1000])
+FN_FDR_Correction <- length(which(fdrtest[901:1000] == TRUE)) / length(fdrtest[901:1000])
+FN_pseudoFDR <- length(which(pseudoFDR[901:1000] == TRUE)) / length(pseudoFDR[901:1000])
+
+```
+
+Now we have type I error rate at `r FP_FDR_Correction` & type II error at `r FN_FDR_Correction`. FN rate is a big improvement over the Bonferroni correction !!
+
+
+Let’s take a look at the cumulative number of significant calls for various levels of α and the different corrections:  
+
+```{r }
+Sig_Calls <- c( length(which(test == FALSE)), length(which(Bonferroni_test == FALSE)), length(which(fdrtest == FALSE)), length(which(pseudoFDR == FALSE))  )
+
+Correction <- c("No correction", "Bonferroni", "FDR", "Pseudo FDR")
+
+data.frame(Sig_Calls, Correction)
+
+```
+
+Let's see the error rates now.  
+
+```{r Error_Rate}
+
+FP_Rates <- c(FP_NoCorrection, FP_Bonferroni_Correction, FP_FDR_Correction, FP_pseudoFDR)
+FN_Rates <- c(FN_NoCorrection, FN_Bonferroni_Correction, FN_FDR_Correction, FN_pseudoFDR)
+
+data.frame(Correction, FP_Rates, FN_Rates)
+```
+
+
+
+
+
+
