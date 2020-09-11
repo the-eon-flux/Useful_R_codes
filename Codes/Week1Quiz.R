@@ -81,3 +81,14 @@ which(c(T3,T4,T5) == M)
 M <- min(c(T3,T4,T5))
 
 
+vars <- c("Injuries"="firebrick1", "CROPDMG"="darkolivegreen", "Fatalities" = "darkslateblue","PROPDMG" ="firebrick1")
+
+
+
+Plot3 <- ggplot( ) + geom_line(data = Year_Casualty, aes(y = log2(INJURIES)+1, x =Year, colour="Injuries"), size = 1, show.legend = T) +   
+			geom_line(data = Year_Casualty, aes(y = log2(FATALITIES)+1, x =Year, colour="Fatalities"), linetype="twodash", show.legend = T) + 
+            	geom_line(data = Year_Casualty, aes(y = log2(PROPDMG)+1, x =Year, colour="PROPDMG"), show.legend	 = T) + 
+                	geom_line(data = Year_Casualty, aes(y = log2(CROPDMG)+1, x =Year, colour="CROPDMG"), linetype="twodash", show.legend = T) + 
+                    	labs(title = "Time trend for Events", subtitle = "Fatalities V/S Injuries", y = "log 2 ( Damage Measurements )", x = " Year ")  +
+                    		facet_wrap(~EVTYPE) + scale_colour_manual(name="Measures:", values=vars) + theme(legend.position="bottom")
+
