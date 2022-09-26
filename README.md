@@ -1,3 +1,10 @@
-# Course-3
+## This repository has codes are in the */Code* directory.
 
-# This repository is for the 3rd course in DA specialisation. Codes are in Code dir.
+Basic R-scripts written for 
+- Clustering
+- Plotting
+- gg-plotting
+- MTC code
+- R-APIs
+- R_to_mySQL
+- R_to_hdf5
